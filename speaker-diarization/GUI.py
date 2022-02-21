@@ -76,7 +76,6 @@ def start_thread():
     global Recording_ON
     Recording_ON = True
     
-    
     # Create and launch a thread 
     t = Thread (target = Record_sound)
     t.start()
@@ -98,6 +97,14 @@ def Stop_Rec():
     stream.close()
     audio.terminate()
     
+def INFERENCE_ACTION(file_path):
+    speakerdf, summarydf = run(file_path)
+    tbl_contents = format_speaker_outputs(speakerdf)
+    tb2_contents = format_speaker_summary(summarydf)
+
+    file_name = os.path.split(file_path)[-1]
+    pdfGeneration(tbl_contents, tb2_contents, file_name)
+
 def Save_Rec():
     SaveRec_Btn['state'] = tk.DISABLED
     Stop_Btn['state'] = tk.DISABLED
@@ -115,15 +122,15 @@ def Save_Rec():
     sound_file.writeframes(b''.join(farmes))
     sound_file.close()
 
+    # window.destroy()
+
+    INFERENCE_ACTION(save_file_name.format(f"Rec_{DT}.wav"))
+    
 def UploadAction(event=None):
     wavFile = filedialog.askopenfilename()
-    file_name = os.path.split(wavFile)[-1]
     window.destroy()
 
-    speakerdf, summarydf = run(wavFile)
-    tbl_contents = format_speaker_outputs(speakerdf)
-    tb2_contents = format_speaker_summary(summarydf)
-    pdfGeneration(tbl_contents, tb2_contents, file_name)
+    INFERENCE_ACTION(wavFile)
 
 if __name__ == '__main__':
     Rec_Label = Label(font=("Arial", 20, "bold"))

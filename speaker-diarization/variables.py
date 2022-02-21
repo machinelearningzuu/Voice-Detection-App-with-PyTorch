@@ -4,9 +4,9 @@ numMix = 50
 n_mels = 40
 frameRate = 50
 n_clusters = 4
-reg_covar = 1e-6
+reg_covar = 1e-5
 affinity = 'euclidean'
-nth_component = 50
+nth_component = 20
 
 sample_rate = 16000
 hop_length = int(sample_rate/frameRate)
