@@ -122,7 +122,7 @@ def Save_Rec():
     sound_file.writeframes(b''.join(farmes))
     sound_file.close()
 
-    # window.destroy()
+    window.destroy()
 
     INFERENCE_ACTION(save_file_name.format(f"Rec_{DT}.wav"))
     
