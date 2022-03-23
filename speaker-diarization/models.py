@@ -1,6 +1,11 @@
+import pandas as pd
 from sklearn.mixture import *
 from sklearn.cluster import AgglomerativeClustering
 
+from Resemblyzer.resemblyzer import preprocess_wav, VoiceEncoder, sampling_rate
+from pathlib import Path
+
+from spectralcluster import *
 from helper import *
 
 def GMMfit(mfcc, nth_component, covariance_type = 'full'):
@@ -82,3 +87,105 @@ def HierarchicalClustering(n_clusters, affinity, GMMfeaturesNormalized):
         
     cluster_prediction = AHCfit(n_clusters, affinity, linkage, GMMfeaturesNormalized)
     return cluster_prediction
+
+def make_resembyzer_diarization(labelling, min_clusters):
+    DiarizationDict = {}
+    DiarizationDict['SpeakerLabel'] = []
+    DiarizationDict['StartTime'] = []
+    DiarizationDict['EndTime'] = []
+    DiarizationDict['TimeSeconds'] = []
+    
+    for label in labelling:
+        speaker_label ,start_time ,time, duration = label
+        DiarizationDict['SpeakerLabel'].append('Person {}'.format(int(speaker_label) + 1))
+        DiarizationDict['StartTime'].append(start_time)
+        DiarizationDict['EndTime'].append(time)
+        DiarizationDict['TimeSeconds'].append(duration)
+    
+    speakerdf = pd.DataFrame(DiarizationDict)
+    speaker_ids = speakerdf.SpeakerLabel.str[-1].astype(int).values
+
+    order_dict = {}
+    speaker_id_new = 1
+    for speaker_id in speaker_ids:
+        if not (speaker_id in order_dict):
+            order_dict[speaker_id] = speaker_id_new
+            speaker_id_new += 1 
+        if len(order_dict) == min_clusters:
+            break
+
+    speaker_ids_updated = ['Person {}'.format(order_dict[speaker_id]) for speaker_id in speaker_ids]
+    speakerdf.SpeakerLabel = np.array(speaker_ids_updated)
+    
+    speakerdf = speakerdf.loc[speakerdf.TimeSeconds >= 2]
+    speakerdf.reset_index(drop=True, inplace=True)
+    return speakerdf
+
+def ResembyzerClustering(
+                    WavFile, 
+                    min_clusters,
+                    rate = {
+                        2 : 1.6,
+                        3 : 1.2,
+                        4 : 1.0,
+                        5 : 1.0
+                            }):
+
+    wav_fpath = Path(WavFile)
+    wav = preprocess_wav(wav_fpath)
+    encoder = VoiceEncoder("cuda")
+    try:
+        _, cont_embeds, wav_splits = encoder.embed_utterance(
+                                                            wav, 
+                                                            return_partials=True, 
+                                                            rate=rate[min_clusters]
+                                                            )
+    except:
+        print("Define a Rate for Given Minimum Number of Clusters")
+
+    refinement_options = RefinementOptions(
+                                gaussian_blur_sigma=1,
+                                p_percentile=0.9,
+                                thresholding_soft_multiplier=0.01,
+                                thresholding_type=ThresholdType.RowMax,
+                                refinement_sequence=ICASSP2018_REFINEMENT_SEQUENCE)
+
+    autotune = AutoTune(
+                    p_percentile_min=0.60,
+                    p_percentile_max=0.95,
+                    init_search_step=0.01,
+                    search_level=3
+                        )
+
+
+    clusterer = SpectralClusterer(
+                        min_clusters=min_clusters,
+                        max_clusters=6,
+                        autotune=autotune,
+                        laplacian_type=None,
+                        refinement_options=refinement_options,
+                        custom_dist="cosine"
+                            )
+
+    labels = clusterer.predict(cont_embeds)
+        
+    times = [((s.start + s.stop) / 2) / sampling_rate for s in wav_splits]
+    labelling = []
+    start_time = 0
+
+    for i,time in enumerate(times):
+        if i>0 and labels[i]!=labels[i-1]:
+            speaker_label = str(labels[i-1])
+            duration = round(time - start_time, 3)
+            temp = [speaker_label ,start_time ,time, duration]
+            labelling.append(tuple(temp))
+            start_time = time
+
+        if i==len(times)-1:
+            speaker_label = str(labels[i])
+            duration = round(time - start_time, 3)
+            temp = [speaker_label ,start_time ,time, duration]
+            labelling.append(tuple(temp))
+
+    speakerdf = make_resembyzer_diarization(labelling, min_clusters)
+    return speakerdf

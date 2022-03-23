@@ -1,6 +1,7 @@
+import librosa, os
 import numpy as np
 import pandas as pd
-
+    
 def SegmentFrame(clust, segLen, frameRate, numFrames):
     frameClust = np.zeros(numFrames)
     for clustI in range(len(clust)-1):
@@ -8,7 +9,23 @@ def SegmentFrame(clust, segLen, frameRate, numFrames):
     frameClust[(clustI+1)*segLen*frameRate:] = clust[clustI+1]*np.ones(numFrames-(clustI+1)*segLen*frameRate)
     return frameClust
 
-def speakerdiarisationdf(hyp, frameRate, wavFile):
+def update_speaker_ids(speakerdf, n_clusters):
+    speaker_ids = speakerdf.SLp.str[-1].astype(int).values
+
+    order_dict = {}
+    speaker_id_new = 1
+    for speaker_id in speaker_ids:
+        if not (speaker_id in order_dict):
+            order_dict[speaker_id] = speaker_id_new
+            speaker_id_new += 1 
+        if len(order_dict) == n_clusters:
+            break
+
+    speaker_ids_updated = ['Person {}'.format(order_dict[speaker_id]) for speaker_id in speaker_ids]
+    speakerdf.SLp = np.array(speaker_ids_updated)
+    return speakerdf
+
+def speakerdiarisationdf(hyp, frameRate, wavFile, duration_speech):
     audioname=[]
     starttime=[]
     endtime=[]
@@ -55,6 +72,8 @@ def speakerdiarisationdf(hyp, frameRate, wavFile):
                 stime=row.starttime
         i=i+1
     spdatafinal.loc[k]=[wavFile.split('/')[-1].split('.')[0]+".wav",spfind,stime,etime]
+    spdatafinal.loc[len(spdatafinal) - 1, 'EndTime'] = duration_speech
+
     return spdatafinal
   
 def summary(spdatafinal):

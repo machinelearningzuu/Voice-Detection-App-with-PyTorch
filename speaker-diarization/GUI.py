@@ -55,7 +55,7 @@ def Record_sound():
     chunk = 1024
     FORMAT = pyaudio.paInt16
     CHANNELS = 1
-    RATE = 44100
+    RATE = sample_rate
 
     audio = pyaudio.PyAudio()
 
@@ -85,7 +85,6 @@ def Stop_Rec():
     global Recording_ON
     global stream
     reset_contdown()
-    
     
     SaveRec_Btn['state'] = tk.NORMAL
     Stop_Btn['state'] = tk.DISABLED
@@ -124,7 +123,12 @@ def Save_Rec():
 
     window.destroy()
 
-    INFERENCE_ACTION(save_file_name.format(f"Rec_{DT}.wav"))
+    try:
+        INFERENCE_ACTION(save_file_name.format(f"Rec_{DT}.wav"))
+
+    except Exception as e:
+        print("File Cannot be processed within the given quality level\n")
+        print(e)
     
 def UploadAction(event=None):
     wavFile = filedialog.askopenfilename()
