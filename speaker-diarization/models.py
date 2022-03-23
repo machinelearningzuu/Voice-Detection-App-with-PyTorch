@@ -123,13 +123,8 @@ def make_resembyzer_diarization(labelling, min_clusters):
 
 def ResembyzerClustering(
                     WavFile, 
-                    min_clusters,
-                    rate = {
-                        2 : 1.6,
-                        3 : 1.2,
-                        4 : 1.0,
-                        5 : 1.0
-                            }):
+                    min_clusters
+                        ):
 
     wav_fpath = Path(WavFile)
     wav = preprocess_wav(wav_fpath)
@@ -138,7 +133,7 @@ def ResembyzerClustering(
         _, cont_embeds, wav_splits = encoder.embed_utterance(
                                                             wav, 
                                                             return_partials=True, 
-                                                            rate=rate[min_clusters]
+                                                            rate=rates[min_clusters]
                                                             )
     except:
         print("Define a Rate for Given Minimum Number of Clusters")

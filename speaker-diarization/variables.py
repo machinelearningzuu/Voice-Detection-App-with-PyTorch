@@ -14,6 +14,13 @@ hop_length = int(sample_rate/frameRate)
 
 seed = 1234
 
+rates = {
+    2 : 1.6,
+    3 : 1.2,
+    4 : 1.0,
+    5 : 1.0
+        }
+
 gmm_weights = "weights/gmm.sav"
 scalar_weights = "weights/scalar.sav"
 clustering_weights = "weights/clustering.sav"
